@@ -207,9 +207,7 @@ def test_only_roles_empty_set():
 
 
 def test_filter_by_predicate():
-    result = filter_by_predicate(
-        MESSAGES, lambda m: len(m.get("content", "")) > 15
-    )
+    result = filter_by_predicate(MESSAGES, lambda m: len(m.get("content", "")) > 15)
     assert SYS in result  # "You are helpful." = 17 chars
     assert USER1 not in result  # "Hello world" = 11 chars, not > 15
 
@@ -305,12 +303,7 @@ def test_multimodal_content_no_match():
 
 
 def test_message_filter_chain():
-    result = (
-        MessageFilter(MESSAGES)
-        .exclude_role("system")
-        .keep_last_n(2)
-        .to_list()
-    )
+    result = MessageFilter(MESSAGES).exclude_role("system").keep_last_n(2).to_list()
     assert result == [USER2, ASST2]
 
 
@@ -325,23 +318,17 @@ def test_message_filter_drop_system():
 
 
 def test_message_filter_only_roles():
-    result = (
-        MessageFilter(MESSAGES).only_roles(["user", "assistant"]).to_list()
-    )
+    result = MessageFilter(MESSAGES).only_roles(["user", "assistant"]).to_list()
     assert len(result) == 4
 
 
 def test_message_filter_content():
-    result = (
-        MessageFilter(MESSAGES).filter_by_content("hello").to_list()
-    )
+    result = MessageFilter(MESSAGES).filter_by_content("hello").to_list()
     assert result == [USER1]
 
 
 def test_message_filter_exclude_content():
-    result = (
-        MessageFilter(MESSAGES).exclude_content("hello").to_list()
-    )
+    result = MessageFilter(MESSAGES).exclude_content("hello").to_list()
     assert USER1 not in result
 
 
@@ -418,9 +405,7 @@ def test_public_filter_by_content():
 
 def test_message_filter_regex():
     result = (
-        MessageFilter(MESSAGES)
-        .filter_by_content(r"^(Hello|Hi)", regex=True)
-        .to_list()
+        MessageFilter(MESSAGES).filter_by_content(r"^(Hello|Hi)", regex=True).to_list()
     )
     assert USER1 in result
     assert ASST1 in result
@@ -442,6 +427,28 @@ def test_no_content_key():
     assert result == []
     result2 = filter_by_role([msg], "tool")
     assert result2 == [msg]
+
+
+def test_none_content_does_not_match_none_literal():
+    # An assistant turn that only issues tool calls often has content=None.
+    # It must not spuriously match a search for the literal "none"/"None".
+    msg = {"role": "assistant", "content": None, "tool_calls": [{"id": "x"}]}
+    assert filter_by_content([msg], "none") == []
+    assert filter_by_content([msg], "None") == []
+    assert filter_by_content([msg], "", regex=False) == [msg]  # empty matches
+
+
+def test_none_content_excluded_correctly():
+    msg = {"role": "assistant", "content": None}
+    # Excluding "none" should keep the None-content message.
+    assert exclude_content([msg], "none") == [msg]
+
+
+def test_none_content_dedup():
+    a = {"role": "assistant", "content": None}
+    b = {"role": "assistant", "content": None}
+    # Both have empty text -> treated as consecutive duplicates.
+    assert deduplicate([a, b]) == [a]
 
 
 def test_only_roles_with_system():
@@ -505,10 +512,7 @@ def test_only_roles_multiple():
 
 def test_chained_excludes():
     result = (
-        MessageFilter(MESSAGES)
-        .exclude_role("system")
-        .exclude_role("user")
-        .to_list()
+        MessageFilter(MESSAGES).exclude_role("system").exclude_role("user").to_list()
     )
     assert all(m["role"] == "assistant" for m in result)
 

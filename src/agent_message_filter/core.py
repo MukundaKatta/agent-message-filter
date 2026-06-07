@@ -46,6 +46,11 @@ Message = dict[str, Any]
 def _content_as_text(message: Message) -> str:
     """Extract a plain-text representation of a message's content."""
     content = message.get("content", "")
+    if content is None:
+        # ``content`` may be explicitly ``None`` (e.g. an assistant turn that
+        # only issues tool calls).  Treat it as empty text rather than the
+        # literal string ``"None"`` so it never matches content searches.
+        return ""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
